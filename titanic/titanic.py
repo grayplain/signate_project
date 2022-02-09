@@ -6,7 +6,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.svm import SVC
-from sklearn.neural_network import MLPClassifier
+from sklearn.metrics import classification_report
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import cross_validate
 
@@ -58,10 +58,11 @@ def model_pred_pd_data(X, y, estimator):
     pipeline = pipe_line(estimator)
 
     print('estimator = {}'.format(estimator.__class__))
-    # print('前処理なし = {}'.format(cross_validate(estimator, X, y)["test_score"]))
-    # print('前処理あり = {}'.format(cross_validate(pipeline, X, y)["test_score"]))
-    print('前処理なし = \n{}'.format(cross_validate(estimator, X, y)))
-    print('前処理あり = \n{}'.format(cross_validate(pipeline, X, y)))
+
+    print('前処理なし = {}'.format(cross_validate(estimator, X, y)["test_score"].mean()))
+    print('前処理あり = {}'.format(cross_validate(pipeline, X, y)["test_score"].mean()))
+    # print('前処理なし = \n{}'.format(cross_validate(estimator, X, y)))
+    # print('前処理あり = \n{}'.format(cross_validate(pipeline, X, y)))
 
     print('----------')
 
@@ -72,18 +73,13 @@ def pipe_line(estimator):
                      ])
 
 
-def main():
+def choose_candiate():
     train_data = read_pd_data('train.tsv')
-    test_data = read_pd_data('test.tsv')
 
     dummy_data = _get_dummies(train_data)
     X = dummy_data.drop('survived', axis=1)
     X = X.interpolate()
     y = dummy_data['survived']
-
-    estimator = LogisticRegression(max_iter=1000)
-    # estimator = RandomForestClassifier()
-    # estimator = SVC()
 
     # MLPClassifier()は実行コストがかかりすぎる & 精度そんなによくないので除外
     estimators = [GaussianNB(),
@@ -95,5 +91,34 @@ def main():
     for estimator in estimators:
          model_pred_pd_data(X.values, y.values, estimator)
 
-    
-main()
+def file_path(file_name):
+    return 'titanic' + '/' + file_name
+
+
+def make_output():
+    train_data = read_pd_data(file_path('train.tsv'))
+
+    dummy_data = _get_dummies(train_data)
+    X = dummy_data.drop('survived', axis=1)
+    X = X.interpolate()
+    y = dummy_data['survived']
+
+    test_data = read_pd_data(file_path('test.tsv'))
+    dummy_test_data = _get_dummies(test_data)
+    X_test = dummy_test_data.interpolate()
+
+    estimator = SVC(probability=True)
+
+    pipeline = pipe_line(estimator).fit(X.values, y.values)
+    pred = pipeline.predict_proba(X_test)
+
+    sample_submit = read_pd_data(file_path('sample_submit.tsv'), header=None)
+    pred = pipeline.predict_proba(X_test)[:, 1]
+    sample_submit[1] = pred
+    sample_submit[1] = sample_submit[1].round(2)
+    print(sample_submit[1].round(2))
+    sample_submit.to_csv('submit2.tsv', header=None, sep='\t')
+
+
+
+make_output()
