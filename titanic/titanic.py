@@ -97,7 +97,8 @@ def file_path(file_name):
 
 def make_output():
     train_data = read_pd_data(file_path('train.tsv'))
-
+    print(train_data)
+    return
     dummy_data = _get_dummies(train_data)
     X = dummy_data.drop('survived', axis=1)
     X = X.interpolate()
