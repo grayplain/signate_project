@@ -2,15 +2,17 @@ import numpy as np
 import pandas as pd
 
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.svm import SVC
+from sklearn.svm import SVR
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import classification_report
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import cross_validate
-
 from sklearn.naive_bayes import GaussianNB
+from sklearn.model_selection import KFold
+from sklearn.metrics import mean_squared_error
+
+import bentou_feature_engineering
+
 
 import os
 
@@ -54,16 +56,16 @@ def model_pred_pd_data(X, y, estimator):
         print("estimator は学習器ではありません。")
         return
 
-    # なるほど、パイプラインは一つの大きい estimator として扱うことができるのか。
     pipeline = pipe_line(estimator)
 
+    pred_estimator_value = estimator.fit(X, y).predict(X)
+    pred_pipe_value = pipeline.fit(X, y).predict(X)
+    true_value = y.values
+
+    # TODO: 交差検証などしないと、過学習してしまっている。
     print('estimator = {}'.format(estimator.__class__))
-
-    print('前処理なし = {}'.format(cross_validate(estimator, X, y)["test_score"].mean()))
-    print('前処理あり = {}'.format(cross_validate(pipeline, X, y)["test_score"].mean()))
-    # print('前処理なし = \n{}'.format(cross_validate(estimator, X, y)))
-    # print('前処理あり = \n{}'.format(cross_validate(pipeline, X, y)))
-
+    print('前処理なし = {}'.format(np.sqrt(mean_squared_error(true_value, pred_estimator_value))))
+    print('前処理あり = {}'.format(np.sqrt(mean_squared_error(true_value, pred_pipe_value))))
     print('----------')
 
 
@@ -76,69 +78,28 @@ def pipe_line(estimator):
                      ])
 
 
-# ワンホットエンコーディング変数に向いてない特徴量を落としたデータ。
-# 超重要な可能性が高い弁当名の情報を丸っと落としているので、最終候補にはデータとして使えないす。
-def trim_train_data_drop_bentou_names():
-    train_data = read_pd_data(file_path('train.csv'))
-    train_data = train_data.drop('name', axis=1)
-    train_data = train_data.drop('remarks', axis=1)
-    train_data = train_data.drop('event', axis=1)
-
-    dummy_data = _get_dummies(train_data)
-    X = dummy_data
-
-    X = X.fillna(0)
-    X = X.replace({'precipitation': {"--": "0"}})
-    # print(X)
-    print(X.corr())
-    # X.to_csv('trim_train.tsv', sep='\t')
-    X.corr().to_csv('corr_train.tsv', sep='\t')
-
 
 # 弁当名にキーワードを追加してワンホットエンコーディングしたやつ。
 def trim_train_data():
     train_data = read_pd_data(file_path('train.csv'))
+    one_hot_fe = bentou_feature_engineering.Bentou_Name_OneHot()
+
+    one_hot_bentou_df = one_hot_fe.generate_one_hot_bentou_name(pd.DataFrame(train_data['name']))
+
     train_data = train_data.drop('name', axis=1)
     train_data = train_data.drop('remarks', axis=1)
     train_data = train_data.drop('event', axis=1)
 
-    one_hot_bentou = generate_one_hot_bentou_name()
-
-    train_data_with_bentou = pd.concat([train_data, one_hot_bentou], axis=1, join='inner')
+    train_data_with_bentou = pd.concat([train_data, one_hot_bentou_df], axis=1, join='inner')
     dummy_data = _get_dummies(train_data_with_bentou)
     X = dummy_data
-
     X = X.fillna(0)
     X = X.replace({'precipitation': {"--": "0"}})
-    # print(X)
-    print(X.corr())
-    # X.to_csv('trim_train.tsv', sep='\t')
-    X.corr().to_csv('corr_train.tsv', sep='\t')
 
+    y = X['y']
+    X = X.drop('y', axis=1)
 
-def generate_one_hot_bentou_name():
-    train_data = pd.read_csv(os.getcwd() + '/datas/' + file_path('train.csv'),
-                             usecols=['datetime', 'y', 'name'])
-    keywords = ["白身魚", "カレー", "カツ", "かつ", "チキン", "鶏",  "ハンバーグ", "カレイ"]
-    countArrays = array_keyword_if_contain(train_data['name'].values, keywords)
-
-    return pd.DataFrame(countArrays.T, columns=keywords, index=train_data['datetime'])
-
-
-def array_keyword_if_contain(bentouArray, keywords):
-    countArrays = []
-    for keyword in keywords:
-        countArray = []
-        for name in bentouArray:
-            if keyword in name:
-                countArray.append(1)
-            else:
-                countArray.append(0)
-        countArrays.append(countArray)
-
-    retValue = np.array(countArrays)
-    return retValue
-
+    model_pred_pd_data(X, y, RandomForestRegressor())
 
 
 trim_train_data()
