@@ -21,7 +21,6 @@ from sklearn.datasets import make_blobs
 def standard_scaler_test():
     X, y = make_blobs()
     scaled_X = StandardScaler().fit_transform(X)
-    print(scaled_X)
 
 
 # 提出ファイル作成
@@ -122,4 +121,5 @@ def make_output():
 
 
 
-make_output()
+# make_output()
+standard_scaler_test()
