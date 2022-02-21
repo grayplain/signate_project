@@ -2,51 +2,55 @@ from PIL import Image
 import pandas as pd
 import numpy as np
 import os
+import pickle
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.decomposition import PCA
-from sklearn.decomposition import NMF
-from sklearn.linear_model import RidgeClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
-from skimage import filters
-from sklearn.datasets import load_digits
 
 
-def read_pd_data(file_name):
+# 提出ファイル作成
+def output_submit(test_data, estimator):
+    sample_submit = read_pd_data('sample_submit.tsv', header=None)
+    pred = estimator.predict(test_data)
+    sample_submit[1] = pred
+    sample_submit.to_csv('submit_number.tsv', header=None, sep='\t')
+
+def read_pd_data(file_name, header="infer"):
     file_name_path = '/' + file_name
-    return pd.read_table(os.getcwd() + '/datas/' + file_name_path)
+    return pd.read_table(os.getcwd() + '/datas/' + file_name_path, header=header)
 
 def write_numpy_data(file_name, file):
     file_name_path = '/' + file_name
     np.savetxt(os.getcwd() + '/datas/' + file_name_path, file, fmt='%.1f')
 
+def write_fitted_model(model, file_name='fitted_model.pickle'):
+    with open(file_name, mode='wb') as f:
+        pickle.dump(model, f, protocol=3)
 
-def open_image(file_name):
-    file_name_path = 'train_images/' + file_name
+def load_fitted_model(file_name='fitted_model.pickle'):
+    return pickle.load(open(file_name, 'rb'))
+
+def open_image(file_name, is_train_data):
+    env = 'train_' if is_train_data else 'test_'
+
+    file_name_path = env + 'images/' + file_name
     return np.array(Image.open(os.getcwd() + '/datas/' + file_name_path))
 
 
-def load_image_datas(max_number):
+def load_image_datas(max_number, is_train_data=True):
+    env = 'train_' if is_train_data else 'test_'
+
     images = np.empty((0, 28*28))
 
     if max_number < 0:
         print('0未満の値の画像は存在しません。')
         return
 
-    # debug 時はちょっと大きすぎる値をぶちこむとパソコンいかれるので制御。
-    # if max_number > 200:
-    #     print('デバッグ時は、あんま重い処理は勘弁。')
-    #     return
-
-    for num in range(1, max_number + 1):
-        file_name = 'train_' + str(num) + '.jpg'
-        img = open_image(file_name)
+    for num in range(max_number):
+        file_name = env + str(num) + '.jpg'
+        img = open_image(file_name, is_train_data)
         # このままだと img は 28×28 次元の配列として扱われるので、reshape(-1, 784)を実行して
         # 784要素の1次元の配列に変換する。
         images = np.append(images, img.reshape(-1, 784), axis=0)
@@ -55,81 +59,52 @@ def load_image_datas(max_number):
     return images
 
 
-def count_number(num):
-    num_pd = read_pd_data('train_master.tsv')
-    print(num_pd[:num].groupby('category_id').count())
-
-# 弁当屋やタイタニックのパイプラインを使えるが、勉強のためもう一回1から作る
 def make_image_pipe_line(estimator):
-    # return Pipeline(steps=[('PCA', PCA()),
-    #                        ('Scaller', StandardScaler()),
-    #                        ('Estimator', estimator)])
-    return Pipeline(steps=[('Scaller', StandardScaler()),
+    return Pipeline(steps=[('Scaler', StandardScaler()),
                            ('Estimator', estimator)])
-    # return Pipeline(steps=[('NMF', NMF(n_components=15, random_state=0)),
-    #                        ('Scaller', StandardScaler()),
-    #                        ('Estimator', estimator)])
-
 
 def classifier_number_from_images(X, y):
     X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0, stratify=y)
-    estimators = [RandomForestClassifier(), LogisticRegression(), SVC()]
+    # estimators = [RandomForestClassifier(), LogisticRegression(max_iter=100000), SVC(max_iter=100000)]
+    estimators = [MLPClassifier()]
+    # estimators = [SVC()]
 
+    print('全データ数 = {}'.format(X.shape[0]))
     for estimator in estimators:
+        print('推定器 =           {}'.format(estimator.__class__))
         pipe = make_image_pipe_line(estimator)
-        print(pipe.fit(X_train, y_train).score(X_train, y_train))
+        print('パイプ =       {:.2f}'.format(pipe.fit(X_train, y_train).score(X_test, y_test)))
+        print('--------')
 
 
-def main():
-    print("")
-    data_count = 500
+def fit_image_model(X, y, estimator):
+    pipe = make_image_pipe_line(estimator)
+    return pipe.fit(X, y)
+
+
+def estimate_image(data_count):
     num_pd = read_pd_data('train_master.tsv')
     y = num_pd[:data_count]['category_id'].values
     images = load_image_datas(data_count)
     classifier_number_from_images(images, y)
 
-    # サンプルはよく認識するのー。
-    # digits = load_digits()
-    # classifier_number_from_images(digits.data, digits.target)
+def main():
+    #学習済みモデルの読み込み、予測
+    test_data_count = 10000
+    test_images = load_image_datas(test_data_count, is_train_data=False)
+    load_model = load_fitted_model()
+    output_submit(test_images, load_model)
+
+
+def train_production_model():
+    # 学習済みモデルの作成、保存
+    train_data_count = 59999
+    train_num_pd = read_pd_data('train_master.tsv')
+    y = train_num_pd[:train_data_count]['category_id'].values
+    train_images = load_image_datas(train_data_count)
+    fitted_model = fit_image_model(train_images, y, MLPClassifier())
+    write_fitted_model(fitted_model)
+
+
 
 main()
-
-
-
-def digit_test():
-
-    np.set_printoptions(threshold=1000)
-
-    digits = load_digits()
-    print('digit_data_shape = {}'.format(digits.data.shape))
-    print('digits.target.shape = {}'.format(digits.target.shape))
-    print('digit_data[0] = {}'.format(digits.data[0]))
-    image = Image.fromarray(digits.data[1].reshape(8, 8))
-    Image._show(image)
-
-# digit_test()
-
-
-def wakarima():
-    # data = [[-1, 2], [-0.5, 6], [0, 10], [1, 18]]
-    # data = [[0, 50],[5, 40],[3, 30]]
-    data = [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]
-    scaler = MinMaxScaler(feature_range=(0, 1), copy=True)
-    print(scaler.fit_transform(data))
-    return
-
-    data_count = 1
-    images = load_image_datas(data_count)
-    digits = load_digits()
-
-    images_min_max = MinMaxScaler().fit_transform(images)
-    # digit_min_max = MinMaxScaler().fit_transform(digits.data)
-    print(images_min_max)
-    # print(digit_min_max)
-
-
-    print("hoohoohohohoh")
-    # write_numpy_data("simasa.txt", MinMaxScaler().fit_transform(images)[0])
-    # write_numpy_data("simasa2.txt", MinMaxScaler().fit_transform(digits.data)[0])
-
-# wakarima()
