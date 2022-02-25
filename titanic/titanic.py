@@ -96,13 +96,14 @@ def file_path(file_name):
 
 def make_output():
     train_data = read_pd_data(file_path('train.tsv'))
-    print(train_data)
-    return
     dummy_data = _get_dummies(train_data)
     X = dummy_data.drop('survived', axis=1)
     X = X.interpolate()
     y = dummy_data['survived']
 
+    print(X.shape)
+    print(y.shape)
+    return
     test_data = read_pd_data(file_path('test.tsv'))
     dummy_test_data = _get_dummies(test_data)
     X_test = dummy_test_data.interpolate()
@@ -121,5 +122,4 @@ def make_output():
 
 
 
-# make_output()
-standard_scaler_test()
+make_output()
