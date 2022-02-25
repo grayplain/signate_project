@@ -9,6 +9,11 @@ import cv2
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
+from sklearn.linear_model import RidgeClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
 
 
 # 提出ファイル作成
@@ -20,7 +25,7 @@ def output_submit(test_data, estimator):
 
 def read_pd_data(file_name, header="infer"):
     file_name_path = '/' + file_name
-    return pd.read_table(os.getcwd() + '/datas/' + file_name_path, header=header)
+    return pd.read_csv(os.getcwd() + '/datas/' + file_name_path, header=header)
 
 def write_numpy_data(file_name, file):
     file_name_path = '/' + file_name
@@ -72,16 +77,59 @@ def load_image_datas(max_number, is_train_data=True):
     images = np.asarray(images_list)
     return images
 
+
+def classifier_number_from_images(X, y):
+    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0, stratify=y)
+    # estimators = [RidgeClassifier()]
+    estimators = [RidgeClassifier(), SVC(), RandomForestClassifier()]
+
+
+    # return
+    print('全データ数 = {}'.format(X.shape[0]))
+    for estimator in estimators:
+        print('推定器 =           {}'.format(estimator.__class__))
+        pipe = make_image_pipe_line(estimator)
+        print('結果(推定器単体) =    {:.2f}'.format(estimator.fit(X_train, y_train).score(X_test, y_test)))
+        print('結果(パイプ) =       {:.2f}'.format(pipe.fit(X_train, y_train).score(X_test, y_test)))
+        print('--------')
+
+
+def fit_image_model(X, y, estimator):
+    pipe = make_image_pipe_line(estimator)
+    return pipe.fit(X, y)
+
+
+def estimate_image(data_count):
+    num_pd = read_pd_data('train_master.tsv')
+    y = num_pd[:data_count]['category_id'].values
+    images = load_image_datas(data_count)
+    classifier_number_from_images(images, y)
+
+
 def main():
+    data_count = 250
+
+    # 画像データ読み込み
+    image_datas = load_image_datas(data_count)
+    reshaped_data = image_datas.reshape(-1, 90000)
+
+    # 正解データの読み込み
+    num_pd = read_pd_data('train.csv')
+    y = num_pd[:data_count]['target'].values
+
+    # 予測
+    classifier_number_from_images(reshaped_data, y)
+    print("end.")
+
+main()
+
+
+def test_show_image():
     start_time = time.time()
     image_datas = load_image_datas(1)
     top_train_data = image_datas[0]
-
     print(top_train_data.reshape(-1, 1).transpose().shape)
     Image._show(Image.fromarray(top_train_data))
 
     # print(top_train_data)
     print("時間 = {:.2f}秒".format(time.time() - start_time))
-    print("end.")
-
-main()
