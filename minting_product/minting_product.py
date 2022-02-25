@@ -4,6 +4,7 @@ import numpy as np
 import os
 import pickle
 import time
+import cv2
 
 
 from sklearn.preprocessing import StandardScaler
@@ -63,7 +64,10 @@ def load_image_datas(max_number, is_train_data=True):
     for num in range(max_number):
         file_name = env + str(num + 1) + '.jpeg'
         img = open_image(file_name, is_train_data)
-        images_list.append(img)
+        # グレースケール化
+        gray_scale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        images_list.append(gray_scale)
+
 
     images = np.asarray(images_list)
     return images
