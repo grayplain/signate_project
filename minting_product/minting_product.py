@@ -18,10 +18,11 @@ from sklearn.model_selection import train_test_split
 
 # 提出ファイル作成
 def output_submit(test_data, estimator):
-    sample_submit = read_pd_data('sample_submit.tsv', header=None)
+    sample_submit = read_pd_data('sample_submit.csv', header=None)
+    print(sample_submit)
     pred = estimator.predict(test_data)
     sample_submit[1] = pred
-    sample_submit.to_csv('submit_number.tsv', header=None, sep='\t')
+    sample_submit.to_csv('submit_minting.csv', header=None, sep=',', index=False)
 
 def read_pd_data(file_name, header="infer"):
     file_name_path = '/' + file_name
@@ -56,7 +57,7 @@ def open_image(file_name, is_train_data):
 
 def load_image_datas(max_number, is_train_data=True):
     pixel = 300*300
-    env = 'train_data_' if is_train_data else 'test_'
+    env = 'train_data_' if is_train_data else 'test_data_'
 
     images = np.empty((0, pixel))
     images_list = images.tolist()
@@ -66,7 +67,7 @@ def load_image_datas(max_number, is_train_data=True):
         return
 
     for num in range(max_number):
-        file_name = env + str(num + 1) + '.jpg'
+        file_name = env + str(num + 1) + '.jpeg'
         img = open_image(file_name, is_train_data)
         # グレースケール化
         gray_scale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -80,7 +81,7 @@ def load_image_datas(max_number, is_train_data=True):
 def classifier_number_from_images(X, y):
     X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0, stratify=y)
     # estimators = [RidgeClassifier()]
-    estimators = [RidgeClassifier(), SVC(), RandomForestClassifier()]
+    estimators = [RandomForestClassifier(), MLPClassifier()]
 
 
     # return
@@ -106,22 +107,34 @@ def estimate_image(data_count):
 
 
 def main():
-    data_count = 4400
+    train_data_count = 4400
 
-    # 画像データ読み込み
-    image_datas = load_image_datas(data_count)
-    reshaped_data = image_datas.reshape(-1, 90000)
-
-    # 正解データの読み込み
-    num_pd = read_pd_data('train_aug.csv')
-    y = num_pd[:data_count]['target'].values
-
-    # 予測してどの推定器が一番良さげか。
+    # # 訓練用
+    # # 画像データ読み込み
+    # train_image_datas = load_image_datas(train_data_count)
+    # reshaped_data = train_image_datas.reshape(-1, 90000)
+    #
+    # # 正解データの読み込み
+    # num_pd = read_pd_data('train_aug.csv')
+    # y = num_pd[:train_data_count]['target'].value
+    #
+    # # 予測してどの推定器が一番良さげか。
     # classifier_number_from_images(reshaped_data, y)
 
+    # # 学習済みモデルの作成
+    # fitted_model = fit_image_model(reshaped_data, y, RidgeClassifier())
+    # write_fitted_model(fitted_model)
+
+
+    # 本番用
+    test_data_count = 100
+    test_image_datas = load_image_datas(test_data_count, is_train_data=False)
+    test_reshaped_data = test_image_datas.reshape(-1, 90000)
+
+
     # 学習済みモデルの作成
-    fitted_model = fit_image_model(reshaped_data, y, RidgeClassifier())
-    write_fitted_model(fitted_model)
+    fitted_model = load_fitted_model("fitted_model_ridge.pickle")
+    output_submit(test_reshaped_data, fitted_model)
     print("end.")
 
 main()
