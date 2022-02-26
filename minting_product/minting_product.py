@@ -42,6 +42,10 @@ def make_image_pipe_line(estimator):
     return Pipeline(steps=[('Scaler', StandardScaler()),
                            ('Estimator', estimator)])
 
+def write_fitted_model(model, file_name='fitted_model.pickle'):
+    with open(file_name, mode='wb') as f:
+        pickle.dump(model, f, protocol=3)
+
 
 def open_image(file_name, is_train_data):
     env = 'train_' if is_train_data else 'test_'
@@ -61,13 +65,8 @@ def load_image_datas(max_number, is_train_data=True):
         print('0未満の値の画像は存在しません。')
         return
 
-    if max_number > 250:
-        print('とりあえず。画像水増ししたらこの処理は不要。 ')
-        return
-
-
     for num in range(max_number):
-        file_name = env + str(num + 1) + '.jpeg'
+        file_name = env + str(num + 1) + '.jpg'
         img = open_image(file_name, is_train_data)
         # グレースケール化
         gray_scale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -107,21 +106,29 @@ def estimate_image(data_count):
 
 
 def main():
-    data_count = 250
+    data_count = 4400
 
     # 画像データ読み込み
     image_datas = load_image_datas(data_count)
     reshaped_data = image_datas.reshape(-1, 90000)
 
     # 正解データの読み込み
-    num_pd = read_pd_data('train.csv')
+    num_pd = read_pd_data('train_aug.csv')
     y = num_pd[:data_count]['target'].values
 
-    # 予測
-    classifier_number_from_images(reshaped_data, y)
+    # 予測してどの推定器が一番良さげか。
+    # classifier_number_from_images(reshaped_data, y)
+
+    # 学習済みモデルの作成
+    fitted_model = fit_image_model(reshaped_data, y, RidgeClassifier())
+    write_fitted_model(fitted_model)
     print("end.")
 
 main()
+
+def fit_image_model(X, y, estimator):
+    pipe = make_image_pipe_line(estimator)
+    return pipe.fit(X, y)
 
 
 def test_show_image():
