@@ -1,11 +1,11 @@
 import numpy as np
-from numpy.random import *
 import pandas as pd
-import datetime
-import math
 
 import os
 
+
+def file_path(file_name):
+    return 'koukoku' + '/' + file_name
 
 # 提出ファイル作成
 def output_submit(result, file_name='submit_blank.csv'):
@@ -15,7 +15,7 @@ def output_submit(result, file_name='submit_blank.csv'):
 
 
 def read_pd_data(file_name, headerFlag="infer"):
-    return pd.read_csv(os.getcwd() + '/datas/' + file_name, index_col=0, header=headerFlag)
+    return pd.read_table(os.getcwd() + '/datas/' + file_name, index_col=0, header=headerFlag)
 
 
 
@@ -23,8 +23,15 @@ def read_pd_data(file_name, headerFlag="infer"):
 
 def main():
     train_data = read_pd_data("train.tsv")
-    
-
+    # train_data = read_pd_data("train.tsv")
+    print(train_data.min())
+    print("----------------")
+    print(train_data.max())
+    print("----------------")
+    print(train_data.median())
+    print("----------------")
+    print(train_data.mode())
+    print("----------------")
 
 main()
 
