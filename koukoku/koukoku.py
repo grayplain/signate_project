@@ -90,7 +90,7 @@ def main():
     # choose_candiate(X, y)
 
 
-def testtest():
+def predict_click():
     pd.set_option('display.max_columns', 100)
     pd.options.display.precision = 2
     pd.options.display.float_format = '{:.2f}'.format
@@ -112,15 +112,16 @@ def testtest():
     # 推定器をいい感じに調べる
     # choose_candiate(X, y)
 
-    test_data = read_pd_data("test.tsv")
-    X_test = test_data.fillna(0)
+    # 出力
+    # test_data = read_pd_data("test.tsv")
+    # X_test = test_data.fillna(0)
+    #
+    # sample_submit = pd.read_csv(os.getcwd() + '/datas/' + 'sample_submit.csv', header=None, index_col=0)
+    # logloss_pipe = pipe_line(LogisticRegression(max_iter=1000)).fit(X, y).predict_proba(X_test)
+    #
+    # sample_submit[1] = logloss_pipe[:, 1]
+    # sample_submit[1] = sample_submit[1].round(4)
+    # print(sample_submit[1].round(4))
+    # sample_submit.to_csv('submit2.tsv', header=None, sep=',')
 
-    sample_submit = read_pd_data('sample_submit.csv')
-    logloss_pipe = pipe_line(LogisticRegression(max_iter=1000)).fit(X, y).predict_proba(X_test)
-
-    sample_submit[1] = logloss_pipe[:, 1]
-    sample_submit[1] = sample_submit[1].round(2)
-    print(sample_submit[1].round(2))
-    sample_submit.to_csv('submit2.tsv', header=None, sep='\t')
-
-testtest()
+predict_click()
