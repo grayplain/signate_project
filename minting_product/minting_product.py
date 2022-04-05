@@ -8,6 +8,7 @@ import cv2
 import matplotlib.pyplot as plt
 
 from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.pipeline import Pipeline
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
@@ -59,27 +60,7 @@ def open_image(file_name, is_train_data):
     return np.array(Image.open(os.getcwd() + '/datas/' + file_name_path))
 
 
-def load_patched_image_data(max_number=10, is_train_data=True):
-    images = load_image_datas(max_number, is_train_data=is_train_data)
-    patched_images = []
-
-    for i in range(max_number):
-        pre_patch = images[i].reshape(-1, 300)
-        patched_image = patches(pre_patch, (30, 30))
-        hoge = patched_image.reshape(-1, 1).shape
-        huga2 = patched_image.reshape(-1, 1).transpose().shape
-        print(huga2)
-        continue
-        patched_images.append(patched_image.reshape(-1, 1).shape)
-    return np.asarray(patched_images)
-    # 細分化した画像の復元確認用。
-    # reconstructed = reconstruct_from_patches_2d(patched_images, pre_patch.shape)
-    # print(patched_images.shape)
-    # print(reconstructed.shape)
-    # Image._show(Image.fromarray(reconstructed))
-
-
-def load_image_datas(max_number, is_train_data=True):
+def load_image_datas(max_number, is_train_data=True, reshape=True):
     pixel = 300*300
     env = 'train_data_' if is_train_data else 'test_data_'
 
@@ -95,9 +76,12 @@ def load_image_datas(max_number, is_train_data=True):
         img = open_image(file_name, is_train_data)
         # グレースケール化
         gray_scale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        # canny = cv2.Canny(gray_scale, 100, 200)
-        images_list.append(gray_scale)
 
+        if reshape:
+            reshaped_gray_scale = gray_scale.reshape(-1, pixel)
+            images_list.append(reshaped_gray_scale[0])
+        else:
+            images_list.append(gray_scale[0])
 
     images = np.asarray(images_list)
     return images
@@ -105,7 +89,6 @@ def load_image_datas(max_number, is_train_data=True):
 
 def classifier_number_from_images(X, y):
     X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0, stratify=y)
-    # estimators = [MLPClassifier(max_iter=5000)]
     estimators = [GaussianNB(), SVC(), RidgeClassifier(), RandomForestClassifier()]
 
     # return
@@ -132,33 +115,30 @@ def estimate_image(data_count):
     classifier_number_from_images(images, y)
 
 
+def load_data_set(train_data_count=1000, is_train_data=True):
+    train_image_datas = load_image_datas(train_data_count, is_train_data)
+
+    standard_train_image_datas = StandardScaler().fit_transform(train_image_datas)
+
+    # 正解データの読み込み
+    num_pd = read_pd_data('train_aug.csv')
+    y = num_pd[:train_data_count]['target'].values
+    return standard_train_image_datas, y
+
+
 def main():
-    train_data_count = 5
+    train_data_count = 1000
 
     # 訓練用
     # 画像データ読み込み
-
-    raw_images = load_image_datas(train_data_count)
-    print('raw_images.shape= {}'.format(raw_images.shape))
-    print('raw_images[0].shape= {}'.format(raw_images[0].shape))
-
-    train_image_datas = load_patched_image_data(max_number=5)
-    print('train_image_datas.shape= {}'.format(train_image_datas.shape))
-    print('train_image_datas[0].shape= {}'.format(train_image_datas[0].shape))
-    print('train_image_datas[0].reshape(-1,1).shape= {}'.format(train_image_datas[0].reshape(-1, 1).shape))
-    return
+    train_image_datas = load_image_datas(train_data_count)
 
     # 正解データの読み込み
     num_pd = read_pd_data('train_aug.csv')
     y = num_pd[:train_data_count]['target'].values
 
-    nmf = NMF(n_components=30, init='random', random_state=0)
-    nmf.fit(train_image_datas)
-
-    return
-
     # # 予測してどの推定器が一番良さげか。
-    classifier_number_from_images(reshaped_data, y)
+    classifier_number_from_images(train_image_datas, y)
 
     # 学習済みモデルの作成
     # fitted_model = fit_image_model(reshaped_data, y, MLPClassifier())
@@ -176,7 +156,7 @@ def main():
     # output_submit(test_reshaped_data, fitted_model)
     print("end.")
 
-main()
+# main()
 
 def fit_image_model(X, y, estimator):
     pipe = make_image_pipe_line(estimator)

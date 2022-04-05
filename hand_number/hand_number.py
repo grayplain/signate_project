@@ -3,11 +3,19 @@ import pandas as pd
 import numpy as np
 import os
 import pickle
+import time
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import RidgeClassifier
+from sklearn.naive_bayes import GaussianNB
 from sklearn.pipeline import Pipeline
+from sklearn.svm import SVC
+
 
 
 # 提出ファイル作成
@@ -43,6 +51,7 @@ def load_image_datas(max_number, is_train_data=True):
     env = 'train_' if is_train_data else 'test_'
 
     images = np.empty((0, 28*28))
+    images_list = images.tolist()
 
     if max_number < 0:
         print('0未満の値の画像は存在しません。')
@@ -53,9 +62,9 @@ def load_image_datas(max_number, is_train_data=True):
         img = open_image(file_name, is_train_data)
         # このままだと img は 28×28 次元の配列として扱われるので、reshape(-1, 784)を実行して
         # 784要素の1次元の配列に変換する。
-        images = np.append(images, img.reshape(-1, 784), axis=0)
-        # images = np.vstack((images, img.reshape(-1, 784)))
+        images_list.append(img.reshape(-1, 784))
 
+    images = np.asarray(images_list)
     return images
 
 
@@ -65,15 +74,23 @@ def make_image_pipe_line(estimator):
 
 def classifier_number_from_images(X, y):
     X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0, stratify=y)
-    # estimators = [RandomForestClassifier(), LogisticRegression(max_iter=100000), SVC(max_iter=100000)]
-    estimators = [MLPClassifier()]
-    # estimators = [SVC()]
+    estimators = [GaussianNB(),
+                  RidgeClassifier(),
+                  LogisticRegression(max_iter=100000),
+                  SVC(max_iter=100000),
+                  RandomForestClassifier(),
+                  MLPClassifier()]
 
     print('全データ数 = {}'.format(X.shape[0]))
     for estimator in estimators:
-        print('推定器 =           {}'.format(estimator.__class__))
+        print('推定器名 =           {}'.format(estimator.__class__))
+        start_estimator_time = time.time()
+        print('推定器単体 =       {:.2f}'.format(estimator.fit(X_train, y_train).score(X_test, y_test)))
+        print("学習時間 = {:.3f}秒".format(time.time() - start_estimator_time))
+        start_pipe_time = time.time()
         pipe = make_image_pipe_line(estimator)
-        print('パイプ =       {:.2f}'.format(pipe.fit(X_train, y_train).score(X_test, y_test)))
+        print('標準化+推定器 =    {:.2f}'.format(pipe.fit(X_train, y_train).score(X_test, y_test)))
+        print("学習時間 = {:.3f}秒".format(time.time() - start_estimator_time))
         print('--------')
 
 
@@ -104,7 +121,3 @@ def train_production_model():
     train_images = load_image_datas(train_data_count)
     fitted_model = fit_image_model(train_images, y, MLPClassifier())
     write_fitted_model(fitted_model)
-
-
-
-main()
