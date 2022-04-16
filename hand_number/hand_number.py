@@ -35,7 +35,9 @@ def write_numpy_data(file_name, file):
 
 def write_fitted_model(model, file_name='fitted_model.pickle'):
     with open(file_name, mode='wb') as f:
-        pickle.dump(model, f, protocol=3)
+        f.write(model)
+        # pickle で保存したい場合は下記の方法で。
+        # pickle.dump(model, f, protocol=3)
 
 def load_fitted_model(file_name='fitted_model.pickle'):
     return pickle.load(open(file_name, 'rb'))
@@ -62,7 +64,16 @@ def load_image_datas(max_number, is_train_data=True):
         img = open_image(file_name, is_train_data)
         # このままだと img は 28×28 次元の配列として扱われるので、reshape(-1, 784)を実行して
         # 784要素の1次元の配列に変換する。
-        images_list.append(img.reshape(-1, 784))
+
+        reshape_img = img.reshape(-1, 784)
+        images_list.append(reshape_img)
+
+        # # tensorflow lite の flutter 版がグレースケールに対応していないため、rgbのチャンネルを別途追加
+        # rgb_reshape_img = np.array([reshape_img, reshape_img, reshape_img])
+        # images_list.append(rgb_reshape_img.reshape(-1, 2352))
+        #
+
+
 
     images = np.asarray(images_list)
     return images
