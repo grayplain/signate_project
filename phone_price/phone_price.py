@@ -5,9 +5,12 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.svm import SVC
+from sklearn.linear_model import RidgeClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import f1_score
+from sklearn.model_selection import cross_validate
+
 
 
 def output_submit(test_data, estimator):
@@ -51,8 +54,8 @@ def make_pipe_line(estimator):
                            ('Estimator', estimator)])
 
 
-def fit_model(X_data, y_data):
-    estimator = make_pipe_line(SVC())
+def fit_model(X_data, y_data, estimator):
+    estimator = make_pipe_line(estimator)
     estimator.fit(X_data, y_data)
 
     return estimator
@@ -62,26 +65,29 @@ def main():
     display_init()
     phone_train_pd_data = trim_pddata(read_pd_data("train.csv"))
     # inspect_pd_data(phone_train_pd_data)
+    # return
 
-    # phone_train_pd_data = add_feature_pddata(phone_train_pd_data)
+    phone_train_pd_data = add_feature_pddata(phone_train_pd_data)
     train_X_data = phone_train_pd_data.drop('price_range', axis=1)
     train_y_data = phone_train_pd_data['price_range']
 
     macro_f1_ave = 0
-    num_of_fit = 30
-
-    for wao in range(0, num_of_fit):
+    num_of_fit = 10
+    for fit_count in range(0, num_of_fit):
         X_train, X_test, y_train, y_test = train_test_split(train_X_data, train_y_data)
-        fitted_model = fit_model(X_train, y_train)
+        fitted_model = fit_model(X_train, y_train, GradientBoostingClassifier(n_estimators=130, learning_rate=0.1))
         phone_f1_score = f1_score(y_test, fitted_model.predict(X_test), average='macro')
         print('macroF1_score = {:.4f}'.format(phone_f1_score))
         macro_f1_ave += phone_f1_score
-
     print('macroF1_average = {:.4f}'.format(macro_f1_ave / num_of_fit))
 
-    # X_train, X_test, y_train, y_test = train_test_split(train_X_data, train_y_data)
-    # fitted_model = fit_model(X_train, y_train)
-    # output_submit(trim_pddata(read_pd_data("test.csv")), fitted_model)
+
+    X_train, X_test, y_train, y_test = train_test_split(train_X_data, train_y_data)
+    fitted_model = fit_model(X_train, y_train, GradientBoostingClassifier(n_estimators=130, learning_rate=0.1))
+
+    phone_test_pd_data = trim_pddata(read_pd_data("test.csv"))
+    phone_test_pd_data = add_feature_pddata(phone_test_pd_data)
+    output_submit(phone_test_pd_data, fitted_model)
 
 
 main()
