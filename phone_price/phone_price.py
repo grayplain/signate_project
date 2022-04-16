@@ -10,7 +10,7 @@ def output_submit(test_data, estimator):
     sample_submit = read_pd_data('submission.csv', header=None)
     pred = estimator.predict(test_data)
     sample_submit[1] = pred
-    sample_submit.to_csv('submit_phone.csv', header=None, sep='\t')
+    sample_submit.to_csv('submit_phone.csv', header=None, sep=',', index=False)
 
 def read_pd_data(file_name, header="infer"):
     file_name_path = '/' + file_name
