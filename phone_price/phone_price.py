@@ -2,8 +2,13 @@ import pandas as pd
 import os
 
 from sklearn.model_selection import train_test_split
+from sklearn.linear_model import RidgeClassifier
 from sklearn.ensemble import GradientBoostingClassifier
-import xgboost
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.svm import LinearSVC
+
+
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import f1_score
@@ -39,10 +44,10 @@ def add_feature_pddata(pd_data: pd.DataFrame):
 
 def inspect_pd_data(pd_data):
     print(pd_data.corr())
-    #  print(pd_data.min())
-    #  print(pd_data.max())
-    #  print(pd_data.mean())
-    #  print(pd_data.median())
+     # print(pd_data.min())
+     # print(pd_data.max())
+     # print(pd_data.mean())
+     # print(pd_data.median())
 
 
 def make_pipe_line(estimator):
@@ -54,43 +59,48 @@ def fit_model(X_data, y_data, estimator):
     estimator = make_pipe_line(estimator)
     estimator.fit(X_data, y_data)
 
-
-    # xg_train = xgboost.DMatrix(X_data.values, label=y_data.values)
-    # param = {'max_depth': 4, 'eta': 1, 'objective': 'multi:softmax', 'num_class': 4}
-    # bst = xgboost.train(param, xg_train, num_boost_round=100)
-
     return estimator
+
+
+def test_model(fitted_model):
+    phone_test_pd_data = trim_pddata(read_pd_data("test.csv"))
+    phone_test_pd_data = add_feature_pddata(phone_test_pd_data)
+    output_submit(phone_test_pd_data, fitted_model)
 
 
 def main():
     display_init()
     phone_train_pd_data = trim_pddata(read_pd_data("train.csv"))
+    # huga = phone_train_pd_data.query('price_range == 3')
     # inspect_pd_data(phone_train_pd_data)
     # return
 
     phone_train_pd_data = add_feature_pddata(phone_train_pd_data)
     train_X_data = phone_train_pd_data.drop('price_range', axis=1)
     train_y_data = phone_train_pd_data['price_range']
-    # estimator = MLPClassifier(max_iter=2000)
-    estimator = GradientBoostingClassifier(n_estimators=130, learning_rate=0.1)
+    estimator = GradientBoostingClassifier(n_estimators=90, learning_rate=0.1)
+    # estimator = RidgeClassifier()
 
-    macro_f1_ave = 0
     num_of_fit = 10
+    macro_f1_ave = 0
+    macro_f1_max = 0
+    max_fitted_model = estimator
     for fit_count in range(0, num_of_fit):
         X_train, X_test, y_train, y_test = train_test_split(train_X_data, train_y_data)
         fitted_model = fit_model(X_train, y_train, estimator)
         phone_f1_score = f1_score(y_test, fitted_model.predict(X_test), average='macro')
+
+        if phone_f1_score > macro_f1_max:
+            macro_f1_max = phone_f1_score
+            max_fitted_model = fitted_model
+
         print('macroF1_score = {:.4f}'.format(phone_f1_score))
         macro_f1_ave += phone_f1_score
     print('macroF1_average = {:.4f}'.format(macro_f1_ave / num_of_fit))
+    print('macroF1_max = {:.4f}'.format(macro_f1_max))
 
+    test_model(max_fitted_model)
 
-    # X_train, X_test, y_train, y_test = train_test_split(train_X_data, train_y_data)
-    # fitted_model = fit_model(X_train, y_train, estimator)
-    #
-    # phone_test_pd_data = trim_pddata(read_pd_data("test.csv"))
-    # phone_test_pd_data = add_feature_pddata(phone_test_pd_data)
-    # output_submit(phone_test_pd_data, fitted_model)
 
 
 main()
