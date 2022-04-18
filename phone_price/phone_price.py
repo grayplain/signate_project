@@ -7,6 +7,7 @@ from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.model_selection import cross_validate
+from sklearn.model_selection import StratifiedKFold
 
 
 from sklearn.pipeline import Pipeline
@@ -78,12 +79,14 @@ def main():
     phone_train_pd_data = add_feature_pddata(phone_train_pd_data)
     train_X_data = phone_train_pd_data.drop('price_range', axis=1)
     train_y_data = phone_train_pd_data['price_range']
-    # estimator = GradientBoostingClassifier(n_estimators=90, learning_rate=0.05)
+    estimator = GradientBoostingClassifier(n_estimators=90, learning_rate=0.05)
     # estimator = RandomForestClassifier()
-    estimator = make_pipe_line(RidgeClassifier())
+    # estimator = make_pipe_line(RidgeClassifier())
     # estimator = make_pipe_line(SVC())
 
-    scores = cross_validate(estimator, train_X_data, train_y_data, cv=5, scoring='f1_macro', return_train_score=True)
+    stratifiedkfold = StratifiedKFold(n_splits=5, shuffle=True)
+    scores = cross_validate(estimator, train_X_data,
+                            train_y_data, cv=stratifiedkfold, scoring='f1_macro', return_train_score=True)
     print('train_f1macro_scores = \n{}'.format(scores['train_score']))
     print('test_f1macro_scores = \n{}'.format(scores['test_score']))
 
