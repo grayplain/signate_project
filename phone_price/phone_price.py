@@ -6,7 +6,7 @@ from sklearn.linear_model import RidgeClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
-from sklearn.svm import LinearSVC
+from sklearn.model_selection import cross_validate
 
 
 from sklearn.pipeline import Pipeline
@@ -78,28 +78,16 @@ def main():
     phone_train_pd_data = add_feature_pddata(phone_train_pd_data)
     train_X_data = phone_train_pd_data.drop('price_range', axis=1)
     train_y_data = phone_train_pd_data['price_range']
-    estimator = GradientBoostingClassifier(n_estimators=90, learning_rate=0.1)
-    # estimator = RidgeClassifier()
+    # estimator = GradientBoostingClassifier(n_estimators=90, learning_rate=0.05)
+    # estimator = RandomForestClassifier()
+    estimator = make_pipe_line(RidgeClassifier())
+    # estimator = make_pipe_line(SVC())
 
-    num_of_fit = 10
-    macro_f1_ave = 0
-    macro_f1_max = 0
-    max_fitted_model = estimator
-    for fit_count in range(0, num_of_fit):
-        X_train, X_test, y_train, y_test = train_test_split(train_X_data, train_y_data)
-        fitted_model = fit_model(X_train, y_train, estimator)
-        phone_f1_score = f1_score(y_test, fitted_model.predict(X_test), average='macro')
+    scores = cross_validate(estimator, train_X_data, train_y_data, cv=5, scoring='f1_macro', return_train_score=True)
+    print('train_f1macro_scores = \n{}'.format(scores['train_score']))
+    print('test_f1macro_scores = \n{}'.format(scores['test_score']))
 
-        if phone_f1_score > macro_f1_max:
-            macro_f1_max = phone_f1_score
-            max_fitted_model = fitted_model
-
-        print('macroF1_score = {:.4f}'.format(phone_f1_score))
-        macro_f1_ave += phone_f1_score
-    print('macroF1_average = {:.4f}'.format(macro_f1_ave / num_of_fit))
-    print('macroF1_max = {:.4f}'.format(macro_f1_max))
-
-    test_model(max_fitted_model)
+    # test_model(max_fitted_model)
 
 
 
